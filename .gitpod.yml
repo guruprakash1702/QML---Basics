@@ -1,0 +1,30 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - name: Build & Run Qt App (noVNC)
+    init: |
+      set -eux
+      mkdir -p build
+      cd build
+      # Prefer qmake6 (Qt 6). If not found, fall back to qmake (Qt 5, if present)
+      (qmake6 ../MyQtApp.pro || qmake ../MyQtApp.pro)
+      make -j"$(nproc)"
+    command: |
+      set -eux
+      # Virtual display
+      Xvfb :0 -screen 0 1024x768x24 &
+      export DISPLAY=:0
+      # Minimal window manager
+      fluxbox &
+      # VNC server on :5900
+      x11vnc -display :0 -nopw -forever -shared -rfbport 5900 &
+      # noVNC gateway on :6080 -> browser
+      websockify --web=/usr/share/novnc/ 6080 localhost:5900 &
+      # Run the app
+      ./build/MyQtApp
+
+ports:
+  - port: 6080
+    name: noVNC Desktop
+    onOpen: open-preview
